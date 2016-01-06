@@ -1,0 +1,10 @@
+[
+    {
+        "caption": "Uncrustify: Format document",
+        "command": "uncrustify_document"
+    },
+    {
+        "caption": "Uncrustify: Format selection",
+        "command": "uncrustify_selection"
+    }
+]

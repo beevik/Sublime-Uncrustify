@@ -1,0 +1,10 @@
+[
+    {
+        "keys": ["ctrl+.", "ctrl+u"],
+        "command": "uncrustify_document"
+    },
+    {
+        "keys": ["ctrl+.", "ctrl+s"],
+        "command": "uncrustify_selection"
+    }
+]

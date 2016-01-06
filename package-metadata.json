@@ -1,0 +1,1 @@
+{"description": "A source code beautifier/formatter plugin that allows the user to use Uncrustify to format the C-like languages in Sublime Text.", "url": "https://github.com/obxyann/Sublime-Uncrustify", "platforms": ["*"], "version": "1.1.1", "sublime_text": "*", "dependencies": []}
