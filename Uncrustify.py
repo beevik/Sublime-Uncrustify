@@ -5,6 +5,13 @@ import fnmatch	# need Unix filename pattern matching
 
 DEFAULT_EXECUTABLE = "uncrustify"
 
+uncrustify_settings = sublime.load_settings('Uncrustify.sublime-settings')
+
+class EventListener(sublime_plugin.EventListener):
+	def on_pre_save(self, view):
+		if uncrustify_settings.get("uncrustify_on_save") and getLanguage(view):
+			view.run_command('uncrustify_document')
+
 def getExecutable():
 	# load settings
 	settings = sublime.load_settings("Uncrustify.sublime-settings")
@@ -197,7 +204,6 @@ def getLanguage(view):
 		path = view.file_name()
 		if not path:
 			msg = "Unknown language: %s" % lang_name
-			sublime.message_dialog(msg)
 			return ""
 
 		file_name, ext_name = os.path.splitext(path)
@@ -225,9 +231,6 @@ def getLanguage(view):
 		return "C"
 	elif lang_name == "es":		# not listed in sublime default
 		return "ECMA"
-
-	msg = "Unsupported language: %s" % lang_name
-	sublime.message_dialog(msg)
 	return ""
 
 def reformat(view, edit, region):
@@ -327,7 +330,6 @@ class UncrustifyDocumentCommand(sublime_plugin.TextCommand):
 		# make full view as region
 		region = sublime.Region(0, self.view.size())
 		if region.empty():
-			# sublime.message_dialog("Empty document!")
 			sublime.status_message("Empty document!")
 			return
 

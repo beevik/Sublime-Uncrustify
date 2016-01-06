@@ -65,7 +65,10 @@
   //	   (not a subset string as rule 0)
   //	2. All above rules are case sensitive!
   //	   (but rule 1 and 2 can be extended to case insensitive pattern)
-  "uncrustify_filtering_rule" : 0
+  "uncrustify_filtering_rule" : 0,
+
+  // Whether to run uncrustify just before saving the file.
+  "uncrustify_on_save" : false
 }
 
 // NOTE: About UNIX wildcards
