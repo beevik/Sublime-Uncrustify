@@ -1,7 +1,10 @@
-import sublime, sublime_plugin
-import os.path, subprocess, traceback
-import re		# need regular expression operations
-import fnmatch	# need Unix filename pattern matching
+import sublime
+import sublime_plugin
+import os.path
+import subprocess
+import re
+import fnmatch
+
 from merge import merge
 
 uncrustify_settings = sublime.load_settings('Uncrustify.sublime-settings')
@@ -28,13 +31,13 @@ def which(program):
     return None
 
 def getExecutable():
-	f = uncrustify_settings.get("uncrustify_executable")
-	if f:
-		if not which(f):
-			err = "Cannot find '%s'\n\nCheck your Uncrustify settings!" % f
+	exe_file = uncrustify_settings.get("uncrustify_executable")
+	if exe_file:
+		if not which(exe_file):
+			err = "Cannot find '%s'\n\nCheck your Uncrustify settings!" % exe_file
 			sublime.error_message(err)
 			return ""
-	return f
+	return exe_file
 
 def getConfig():
 	# get default config setting
@@ -127,85 +130,56 @@ def getConfigByFilter(path_name):
 	return "none"
 
 def guessLanguage(ext_name):
-	if ext_name == ".c":
-		return "C"
-	elif ext_name == ".cpp" or \
-		 ext_name == ".h" or \
-		 ext_name == ".cxx" or \
-		 ext_name == ".hpp" or \
-		 ext_name == ".hxx" or \
-		 ext_name == ".cc" or \
-		 ext_name == ".cp" or \
-		 ext_name == ".C" or \
-		 ext_name == ".CPP" or \
-		 ext_name == ".c++":
-		return "CPP"
-	elif ext_name == ".d" or \
-		 ext_name == ".di":
-		return "D"
-	elif ext_name == ".cs":
-		return "CS"
-	elif ext_name == '.java':
-		return "JAVA"
-	elif ext_name == ".pawn" or \
-		 ext_name == ".p" or \
-		 ext_name == ".sma" or \
-		 ext_name == ".inl":
-		return "PAWN"
-	elif ext_name == ".m":
-		return "OC"
-	elif ext_name == ".mm":
-		return "OC+"
-	elif ext_name == ".vala":
-		return "VALA"
-	elif ext_name == ".sqc":	# embedded SQL
-		return "SQL"
-	elif ext_name == ".es":
-		return "ECMA"
-	return ""
+	lang_dict = {
+		".c": "C",
+		".cpp": "CPP",
+		".h": "CPP",
+		".cxx": "CPP",
+		".hxx": "CPP",
+		".d": "D",
+		".di": "D",
+		".cs": "CS",
+		".java": "JAVA",
+		".pawn": "PAWN",
+		".p": "PAWN",
+		".sma": "PAWN",
+		".m": "OC",
+		".mm": "OC+",
+		".vala": "VALA",
+		".sqc": "SQL",
+		".es": "ECMA"
+	}
+	return lang_dict.get(ext_name, "")
 
 def getLanguage(view):
-	# get topmost scope
 	scope = view.scope_name(view.sel()[0].end())
 
  	# should be source.<lang_name>
-	result = re.search("\\bsource\\.([a-z+\-]+)", scope)
-
+	result = re.search("\\bsource\\.([a-z0-9+\-]+)", scope)
 	lang_name = result.group(1) if result else "Plain Text"
 
 	if lang_name == "Plain Text":
-		# check if match our extension names
 		path = view.file_name()
 		if not path:
-			msg = "Unknown language: %s" % lang_name
 			return ""
-
 		file_name, ext_name = os.path.splitext(path)
 		return guessLanguage(ext_name)
 
-	if lang_name == "c":
-		return "C"
-	elif lang_name == "c++":
-		return "CPP"
-	elif lang_name == "d":
-		return "D"
-	elif lang_name == "cs":
-		return "CS"
-	elif lang_name == 'java':
-		return "JAVA"
-	elif lang_name == "pawn":	# not listed in sublime default
-		return "PAWN"
-	elif lang_name == "objc":
-		return "OC"
-	elif lang_name == "objc++":
-		return "OC+"
-	elif lang_name == "vala":	# not listed in sublime default
-		return "VALA"
-	elif lang_name == "sql":
-		return "C"
-	elif lang_name == "es":		# not listed in sublime default
-		return "ECMA"
-	return ""
+	lang_dict = {
+		'c': 'C',
+		'c89': 'C',
+		'c99': 'C',
+		'c++': 'CPP',
+		'd': 'D',
+		'cs': 'CS',
+		'java': 'JAVA',
+		'pawn': 'PAWN',
+		'objc': 'OC',
+		'objc++': 'OC+',
+		'vala': 'VALA',
+		'es': 'ECMA'
+	}
+	return lang_dict.get(lang_name, "")
 
 def reformat(view, edit):
 	vsize = view.size()
@@ -219,71 +193,50 @@ def reformat(view, edit):
 	if not program:
 		return
 
-	command = []
-	command.append(program)
-
 	# specify the language override (because input is from stdin)
 	lang = getLanguage(view)
 	if not lang:
 		return
 
-	command.append("-l")
-	command.append(lang)
-
 	# specify the config file:
-	# try 1
 	config = getConfigByFilter(view.file_name())
 	if not config:
 		return
-	# try 2
 	if config == "none":
 		config = getConfigByLang(lang)
 		if not config:
 			return
-	# try 3
 	if config == "none":
 		config = getConfig()
 		if not config:
 			return
 
-	command.append("-c")
-	command.append(config)
+	command = [program, "-l", lang, "-c", config]
 
-	# dump command[]
-	msg = ""
-	for str in command:
-		msg += str
-		msg += " "
-	print("> " + msg + "...")
-	sublime.status_message(msg + "...")
+	# dump command to console
+	msg = ' '.join(command)
+	print("> " + msg)
+	sublime.status_message(msg)
 
 	try:
-		# run
-		proc = subprocess.Popen(command, \
-			   stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+		proc = subprocess.Popen(command,
+			   stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+			   stderr = subprocess.PIPE)
 
 		content = view.substr(region).encode("utf-8")
-		output = proc.communicate(input=content)[0]
+		out, err = proc.communicate(input=content)
 
-		# wait return
 		return_code = proc.poll()
 		if return_code != 0:
-			stderr = proc.communicate()[1]
-			if stderr:
-				err = "Found error in executing '%s':\n\n%s" % (command[0], stderr.decode("utf-8"))
-			else:
-				err = "Found error in executing '%s':\n\nCode: %d" % (command[0], return_code)
-			sublime.error_message(err)
+			sublime.error_message("Uncrustify error #%d:\n%s" % (return_code, err.decode("utf-8")))
 			return
 
-		_, err = merge(view, vsize, output.decode("utf-8"), edit)
+		dirty, err = merge(view, vsize, out.decode("utf-8"), edit)
+		if err:
+			sublime.error_message("Uncrustify merge error:\n%s" % (err))
 
 	except (OSError, ValueError, subprocess.CalledProcessError, Exception) as e:
-		if command[0] == DEFAULT_EXECUTABLE:
-			err = "Cannot execute '%s' (from PATH)\n\n%s\n\nNeed to specify the executable file in Uncrustify settings!" % (command[0], e)
-		else:
-			err = "Cannot execute '%s'\n\n%s" % (command[0], e)
-		sublime.error_message(err)
+		sublime.error_message("Cannot execute '%s'\n\n%s" % (command[0], e))
 
 def open_file(window, file_name):
 	window.open_file(file_name)
