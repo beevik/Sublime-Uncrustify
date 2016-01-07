@@ -2,7 +2,7 @@
   // Specifies the path to uncrustify binary when not in the PATH.
   // For example:
   //	"uncrustify_executable" : "C:/UTILS/Devel/uncrustify/uncrustify.exe"
-  "uncrustify_executable" : "",
+  "uncrustify_executable" : "uncrustify",
 
   // Specifies the config file for uncrustify when not set UNCRUSTIFY_CONFIG.
   // For example:
@@ -17,21 +17,21 @@
   //	Don't use other language keywords which uncrustify don't supported.
   "uncrustify_config_by_lang" :
   [
-	// For example:
-	// All Java files use java.cfg and all Objective C files use obj.cfg, others use default...
-	// { "JAVA" : "C:/cfg/java.cfg" },
-	// { "OC" : "C:/cfg/obj.cfg" }
-	{ "C" : "" },
-	{ "CPP" : "" },
-	{ "D" : "" },
-	{ "CS" : "" },		// this is C#
-	{ "JAVA" : "" },
-	{ "PAWN" : "" },
-	{ "OC" : "" },		// this is Objective C
-	{ "OC+" : "" },		// this is Objective C++
-	{ "VALA" : "" },
-	{ "SQL" : "" },
-	{ "ECMA" : "" }
+  	// For example:
+  	// All Java files use java.cfg and all Objective C files use obj.cfg, others use default...
+  	// { "JAVA" : "C:/cfg/java.cfg" },
+  	// { "OC" : "C:/cfg/obj.cfg" }
+  	{ "C" : "" },
+  	{ "CPP" : "" },
+  	{ "D" : "" },
+  	{ "CS" : "" },		// this is C#
+  	{ "JAVA" : "" },
+  	{ "PAWN" : "" },
+  	{ "OC" : "" },		// this is Objective C
+  	{ "OC+" : "" },		// this is Objective C++
+  	{ "VALA" : "" },
+  	{ "SQL" : "" },
+  	{ "ECMA" : "" }
   ],
 
   // Overrides the "uncrustify_config" and "uncrustify_config_by_lang" when path name of document matches

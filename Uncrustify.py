@@ -2,8 +2,7 @@ import sublime, sublime_plugin
 import os.path, subprocess, traceback
 import re		# need regular expression operations
 import fnmatch	# need Unix filename pattern matching
-
-DEFAULT_EXECUTABLE = "uncrustify"
+from merge import merge
 
 uncrustify_settings = sublime.load_settings('Uncrustify.sublime-settings')
 
@@ -12,34 +11,34 @@ class EventListener(sublime_plugin.EventListener):
 		if uncrustify_settings.get("uncrustify_on_save") and getLanguage(view):
 			view.run_command('uncrustify_document')
 
-def getExecutable():
-	# load settings
-	settings = sublime.load_settings("Uncrustify.sublime-settings")
-	user_settings = sublime.load_settings("Preferences.sublime-settings")
+def which(program):
+    import os
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
 
-	# get executable setting
-	executable = user_settings.get("uncrustify_executable") or \
-				 settings.get("uncrustify_executable")
-	if executable:
-		# only if exists
-		if not os.path.exists(executable):
-			err = "Cannot find '%s'\n\nCheck your Uncrustify settings!" % executable
+def getExecutable():
+	f = uncrustify_settings.get("uncrustify_executable")
+	if f:
+		if not which(f):
+			err = "Cannot find '%s'\n\nCheck your Uncrustify settings!" % f
 			sublime.error_message(err)
 			return ""
-	else:
-		# will find uncrustify in PATH
-		executable = DEFAULT_EXECUTABLE
-
-	return executable
+	return f
 
 def getConfig():
-	# load settings
-	settings = sublime.load_settings("Uncrustify.sublime-settings")
-	user_settings = sublime.load_settings("Preferences.sublime-settings")
-
 	# get default config setting
-	config = user_settings.get("uncrustify_config") or \
-			 settings.get("uncrustify_config")
+	config = uncrustify_settings.get("uncrustify_config")
 	if config:
 		# only if exists
 		if not os.path.exists(config):
@@ -62,13 +61,8 @@ def getConfig():
 	return config
 
 def getConfigByLang(lang):
-	# load settings
-	settings = sublime.load_settings("Uncrustify.sublime-settings")
-	user_settings = sublime.load_settings("Preferences.sublime-settings")
-
 	# get config setting
-	configs = user_settings.get("uncrustify_config_by_lang", []) or \
-			  settings.get("uncrustify_config_by_lang", [])
+	configs = uncrustify_settings.get("uncrustify_config_by_lang", [])
 
 	if len(configs) == 0:
 		return "none"
@@ -78,9 +72,6 @@ def getConfigByLang(lang):
 		for key, config in each.items():
 			if not key or not config:
 				continue
-
-			# only for debug
-			# print(key, config)
 
 			if lang == key:
 				# only if exists
@@ -94,17 +85,11 @@ def getConfigByLang(lang):
 	return "none"
 
 def getConfigByFilter(path_name):
-	# load settings
-	settings = sublime.load_settings("Uncrustify.sublime-settings")
-	user_settings = sublime.load_settings("Preferences.sublime-settings")
-
 	# get filtering rule
-	rule = user_settings.get("uncrustify_filtering_rule", 0) or \
-		   settings.get("uncrustify_filtering_rule", 0)
+	rule = uncrustify_settings.get("uncrustify_filtering_rule", 0)
 
 	# get config setting
-	configs = user_settings.get("uncrustify_config_by_filter", []) or \
-			  settings.get("uncrustify_config_by_filter", [])
+	configs = uncrustify_settings.get("uncrustify_config_by_filter", [])
 
 	if len(configs) == 0:
 		return "none"
@@ -122,17 +107,11 @@ def getConfigByFilter(path_name):
 	# force to unix style
 	path_name = path_name.replace('\\', '/')
 
-	# only for debug
-	# print("path_name: " + path_name)
-
 	# find one appeared in path_name
 	for each in configs:
 		for pattern, config in each.items():
 			if not pattern or not config:
 				continue
-
-			# only for debug
-			# print(rule, pattern, config)
 
 			if (rule == 0 and path_name.find(pattern) >= 0) or \
 			   (rule == 1 and fnmatch.fnmatch(path_name, pattern)) or \
@@ -183,9 +162,6 @@ def guessLanguage(ext_name):
 		return "SQL"
 	elif ext_name == ".es":
 		return "ECMA"
-
-	msg = "Unknown file extension: %s" % ext_name
-	sublime.message_dialog(msg)
 	return ""
 
 def getLanguage(view):
@@ -196,8 +172,6 @@ def getLanguage(view):
 	result = re.search("\\bsource\\.([a-z+\-]+)", scope)
 
 	lang_name = result.group(1) if result else "Plain Text"
-	# only for debug
-	# print("lang_name: " + lang_name)
 
 	if lang_name == "Plain Text":
 		# check if match our extension names
@@ -233,18 +207,19 @@ def getLanguage(view):
 		return "ECMA"
 	return ""
 
-def reformat(view, edit, region):
-	content = view.substr(region)
-	command = []
-
-	# only for debug
-	# print("content: " + content)
+def reformat(view, edit):
+	vsize = view.size()
+	region = sublime.Region(0, vsize)
+	if region.empty():
+		sublime.status_message("Empty document!")
+		return
 
 	# assign the external program
 	program = getExecutable()
 	if not program:
 		return
 
+	command = []
 	command.append(program)
 
 	# specify the language override (because input is from stdin)
@@ -274,11 +249,6 @@ def reformat(view, edit, region):
 	command.append("-c")
 	command.append(config)
 
-	# only for debug
-	#	command[] should like
-	#	['C:/path/uncrustify.exe', '-l', 'CPP', '-c', 'C:/path/my.cfg']
-	# print("command[]: " + command)
-
 	# dump command[]
 	msg = ""
 	for str in command:
@@ -292,7 +262,8 @@ def reformat(view, edit, region):
 		proc = subprocess.Popen(command, \
 			   stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
 
-		output = proc.communicate(input=content.encode("utf-8"))[0]
+		content = view.substr(region).encode("utf-8")
+		output = proc.communicate(input=content)[0]
 
 		# wait return
 		return_code = proc.poll()
@@ -305,16 +276,9 @@ def reformat(view, edit, region):
 			sublime.error_message(err)
 			return
 
-		# only for debug
-		# print("output: " + output)
-
-		# replace by result
-		view.replace(edit, region, output.decode("utf-8"))
+		_, err = merge(view, vsize, output.decode("utf-8"), edit)
 
 	except (OSError, ValueError, subprocess.CalledProcessError, Exception) as e:
-		# only for debug
-		# traceback.print_exc()
-
 		if command[0] == DEFAULT_EXECUTABLE:
 			err = "Cannot execute '%s' (from PATH)\n\n%s\n\nNeed to specify the executable file in Uncrustify settings!" % (command[0], e)
 		else:
@@ -327,32 +291,7 @@ def open_file(window, file_name):
 # Uncrustify the document
 class UncrustifyDocumentCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		# make full view as region
-		region = sublime.Region(0, self.view.size())
-		if region.empty():
-			sublime.status_message("Empty document!")
-			return
-
-		# go
-		reformat(self.view, edit, region)
-
-# Uncrustify only the selection region
-class UncrustifySelectionCommand(sublime_plugin.TextCommand):
-	def run(self, edit):
-		# get selections
-		sels = self.view.sel()
-
-		# pick 1st selection as region
-		# TODO: try to support multi-selection...
-		# for region in sels
-		# 	...
-		region = sels[0]
-		if region.empty():
-			sublime.message_dialog("No selection!")
-			return
-
-		# go
-		reformat(self.view, edit, region)
+		reformat(self.view, edit)
 
 # open the config file to edit
 class UncrustifyOpenCfgCommand(sublime_plugin.WindowCommand):
