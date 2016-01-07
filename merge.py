@@ -1,7 +1,7 @@
 # Code borrowed from GoSublime
 import sublime
 import sys
-from diff_match_patch.diff_match_patch import diff_match_patch
+from dmp import diff_match_patch
 
 class MergeException(Exception):
     pass
